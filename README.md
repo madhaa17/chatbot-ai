@@ -1,6 +1,6 @@
 # AI Chatbot with Next.js
 
-<a href="chatbot-ai-dun-nine.vercel.app" target="_blank">Demo Chatbot</a>
+<a href="https://chatbot-ai-dun-nine.vercel.app" target="_blank">Demo Chatbot</a>
 
 This is a modern chatbot application built with Next.js that supports both Google's Gemini models.
 
