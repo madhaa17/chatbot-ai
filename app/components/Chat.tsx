@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2, ChevronDown } from "lucide-react";
+import {
+  Send,
+  Loader2,
+  Smile,
+  Paperclip,
+  ChevronDown,
+  Bot,
+  User,
+} from "lucide-react";
 
 interface ChatMessage {
   id: string;
@@ -145,29 +153,32 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full bg-gray-900">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 p-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
+      <div className="bg-gray-800 p-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
         <div className="flex items-center">
           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
-            <span className="text-white font-semibold text-lg">AI</span>
+            <Bot className="h-6 w-6 text-white" />
           </div>
-          <h1 className="text-xl font-semibold ml-3 text-gray-800">
+          <h1 className="text-xl font-semibold ml-3 text-white">
             Chat Assistant
           </h1>
         </div>
+        {/* <button className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-full transition-colors">
+          <ChevronDown className="h-5 w-5" />
+        </button> */}
       </div>
 
       {/* Messages Area */}
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-indigo-50 to-white">
+        className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-900">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full opacity-70 space-y-4">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">AI</span>
+              <Bot className="h-8 w-8 text-white" />
             </div>
-            <p className="text-gray-600 text-center px-4 font-medium">
+            <p className="text-gray-300 text-center px-4 font-medium">
               Send a message to start the conversation
             </p>
           </div>
@@ -180,19 +191,53 @@ export default function Chat() {
               message.role === "user" ? "justify-end" : "justify-start"
             } group`}>
             <div className="flex flex-col max-w-[85%] sm:max-w-[75%]">
+              {message.role === "assistant" && (
+                <div className="flex items-center mb-1 ml-1">
+                  <div className="h-6 w-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mr-2">
+                    <Bot className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <span className="text-xs font-medium text-gray-400">
+                    Assistant
+                  </span>
+                </div>
+              )}
+
+              {message.role === "user" && (
+                <div className="flex items-center justify-end mb-1 mr-1">
+                  <span className="text-xs font-medium text-gray-400">You</span>
+                  <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center ml-2">
+                    <User className="h-3.5 w-3.5 text-white" />
+                  </div>
+                </div>
+              )}
+
               <div
                 className={`rounded-2xl px-4 py-3 ${
                   message.role === "user"
-                    ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md rounded-tr-none"
-                    : "bg-white text-gray-800 border border-gray-100 shadow-sm rounded-tl-none"
+                    ? "bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-md rounded-tr-none"
+                    : "bg-gray-800 text-gray-100 border border-gray-700 shadow-md rounded-tl-none"
+                } ${
+                  message.role === "assistant"
+                    ? "prose prose-invert prose-sm max-w-none"
+                    : ""
                 }`}>
-                {message.content}
+                {message.role === "assistant"
+                  ? message.content.split("\n").map((text, i) => (
+                      <p
+                        key={i}
+                        className={`${text.startsWith("• ") ? "ml-2" : ""} ${
+                          i > 0 ? "mt-2" : ""
+                        }`}>
+                        {text}
+                      </p>
+                    ))
+                  : message.content}
               </div>
               <span
                 className={`text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity ${
                   message.role === "user"
-                    ? "text-right mr-1 text-gray-500"
-                    : "ml-1 text-gray-500"
+                    ? "text-right mr-1 text-gray-400"
+                    : "ml-1 text-gray-400"
                 }`}>
                 {formatTime(message.timestamp)}
               </span>
@@ -202,10 +247,12 @@ export default function Chat() {
 
         {isLoading && !messages.some((m) => m.id === "streaming") && (
           <div className="flex justify-start">
-            <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 bg-white text-gray-800 border border-gray-100 shadow-sm rounded-tl-none">
+            <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 bg-gray-800 text-gray-100 border border-gray-700 shadow-md rounded-tl-none">
               <div className="flex items-center space-x-2">
-                <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
-                <span>Thinking...</span>
+                <div className="bg-gray-700 rounded-full p-1">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                </div>
+                <span className="text-gray-300">Assistant is typing...</span>
               </div>
             </div>
           </div>
@@ -217,27 +264,39 @@ export default function Chat() {
       {showScrollButton && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-20 right-4 bg-indigo-600 text-white rounded-full p-2 shadow-lg hover:bg-indigo-700 transition-colors">
+          className="absolute bottom-24 right-6 bg-blue-600 text-white rounded-full p-2 shadow-lg hover:bg-blue-700 transition-colors">
           <ChevronDown className="h-5 w-5" />
         </button>
       )}
 
       {/* Input Area */}
-      <div className="bg-white border-t border-gray-100 p-4 sticky bottom-0 shadow-inner">
+      <div className="bg-gray-800 p-4 sticky bottom-0 shadow-inner">
         <form
           onSubmit={handleSubmit}
           className="flex gap-2 max-w-4xl mx-auto relative">
+          {/* <button
+            type="button"
+            className="p-3 text-gray-400 hover:text-blue-400 focus:outline-none transition-colors absolute left-3 top-1/2 transform -translate-y-1/2">
+            <Paperclip className="h-5 w-5" />
+          </button> */}
+
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message..."
-            className="flex-1 p-3 pl-12 pr-12 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-700 bg-gray-50 shadow-sm"
+            className="flex-1 p-3 pl-12 pr-12 border border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100 bg-gray-700 shadow-md"
             disabled={isLoading}
           />
 
+          {/* <button
+            type="button"
+            className="p-3 text-gray-400 hover:text-blue-400 focus:outline-none transition-colors absolute right-14 top-1/2 transform -translate-y-1/2">
+            <Smile className="h-5 w-5" />
+          </button> */}
+
           <button
             type="submit"
-            className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-full hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+            className="p-3 bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-full hover:from-blue-600 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
             disabled={isLoading}>
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
