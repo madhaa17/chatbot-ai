@@ -1,10 +1,12 @@
 # AI Chatbot with Next.js
 
-This is a modern chatbot application built with Next.js that supports both Google's Gemini and OpenAI's ChatGPT models. The application features a clean, responsive UI and allows users to switch between different AI models.
+<a href="chatbot-ai-dun-nine.vercel.app" target="_blank">Demo Chatbot</a>
+
+This is a modern chatbot application built with Next.js that supports both Google's Gemini models.
 
 ## Features
 
-- Support for both Gemini and ChatGPT models
+- Support for both Gemini
 - Real-time chat interface
 - Responsive design
 - TypeScript support
@@ -47,7 +49,6 @@ yarn dev
 
 ## Usage
 
-1. Select your preferred AI model (Gemini or ChatGPT) from the dropdown menu
 2. Type your message in the input field
 3. Press Enter or click the Send button to send your message
 4. The AI will respond in real-time
