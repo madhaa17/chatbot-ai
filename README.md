@@ -14,28 +14,31 @@ This is a modern chatbot application built with Next.js that supports both Googl
 
 - Node.js 18+ and Yarn
 - Google API key for Gemini
-- OpenAI API key (optional, for ChatGPT support)
 
 ## Setup
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd chatbot-ai
 ```
 
 2. Install dependencies:
+
 ```bash
 yarn install
 ```
 
 3. Create a `.env.local` file in the root directory and add your API keys:
+
 ```
 GOOGLE_API_KEY=your_google_api_key_here
 OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 4. Start the development server:
+
 ```bash
 yarn dev
 ```
@@ -51,11 +54,10 @@ yarn dev
 
 ## Technologies Used
 
-- Next.js 14
+- Next.js 15
 - TypeScript
 - Tailwind CSS
 - Google Generative AI SDK
-- OpenAI API
 - Vercel AI SDK
 
 ## License

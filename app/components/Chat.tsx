@@ -156,9 +156,6 @@ export default function Chat() {
             Chat Assistant
           </h1>
         </div>
-        <button className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors">
-          <ChevronDown className="h-5 w-5" />
-        </button>
       </div>
 
       {/* Messages Area */}
