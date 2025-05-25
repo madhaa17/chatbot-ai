@@ -1,11 +1,26 @@
-import Chat from "../components/Chat";
+import { getServerSession } from "next-auth";
+import { authOptions } from "./api/auth/[...nextauth]/route";
+import { redirect } from "next/navigation";
+import Link from "next/link";
 
-export default function Home() {
+export default async function Home() {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    redirect("/auth/signin");
+  }
+
   return (
-    <main className="min-h-screen flex items-center justify-center p-0 sm:p-6 md:p-8">
-      <div className="w-full max-w-4xl h-[100dvh] sm:h-[95dvh] bg-white rounded-none sm:rounded-3xl shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-95">
-        <Chat />
+    <div className="flex min-h-screen flex-col items-center justify-between p-24">
+      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm">
+        <h1 className="text-4xl font-bold mb-4">
+          Welcome, {session.user?.name}!
+        </h1>
+        <p>You are successfully logged in.</p>
+        <Link className="text-blue-500" href="/chat">
+          Go to chat
+        </Link>
       </div>
-    </main>
+    </div>
   );
 }

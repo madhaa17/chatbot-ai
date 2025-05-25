@@ -11,9 +11,60 @@ export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
+
+  // Load chat history on mount
+  useEffect(() => {
+    loadChatHistory();
+  }, []);
+
+  // Load chat history from the database
+  const loadChatHistory = async () => {
+    try {
+      const response = await fetch("/api/chat/history");
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Unknown error occurred" }));
+        throw new Error(
+          errorData.error || `Failed to load chat history (${response.status})`
+        );
+      }
+
+      const data = await response.json();
+
+      // Handle empty or invalid response data
+      if (!data) {
+        throw new Error("No data received from server");
+      }
+
+      // Initialize messages array even if empty
+      const messages = data.messages || [];
+      setMessages(
+        messages.map((msg: any) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date(msg.createdAt),
+        }))
+      );
+
+      // Set chat ID if available
+      if (data.chatId) {
+        setCurrentChatId(data.chatId);
+      }
+    } catch (error) {
+      console.error("Error loading chat history:", error);
+      // Show user-friendly error message
+      alert(
+        "Failed to load chat history. Please refresh the page to try again."
+      );
+    }
+  };
 
   // Auto-scroll to the bottom when messages change
   useEffect(() => {
@@ -58,11 +109,17 @@ export function useChat() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMessage] }),
+        body: JSON.stringify({
+          messages: [...messages, userMessage],
+          chatId: currentChatId,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Unknown error occurred" }));
+        throw new Error(errorData.error || `Server error (${response.status})`);
       }
 
       const reader = response.body?.getReader();
@@ -98,6 +155,9 @@ export function useChat() {
                   ];
                 });
               }
+              if (data.chatId && !currentChatId) {
+                setCurrentChatId(data.chatId);
+              }
             } catch (e) {
               console.error("Error parsing streamed data:", e);
             }
@@ -120,7 +180,6 @@ export function useChat() {
       });
     } catch (error) {
       console.error("Streaming error:", error);
-      // Show error message to user
       setMessages((prev) => [
         ...prev,
         {
@@ -132,6 +191,28 @@ export function useChat() {
       ]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const deleteAllChats = async () => {
+    try {
+      const response = await fetch("/api/chat/delete-all", {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Unknown error occurred" }));
+        throw new Error(errorData.error || `Server error (${response.status})`);
+      }
+
+      // Clear local messages and chat ID
+      setMessages([]);
+      setCurrentChatId(null);
+    } catch (error) {
+      console.error("Error deleting chats:", error);
+      throw error;
     }
   };
 
@@ -152,5 +233,6 @@ export function useChat() {
     scrollToBottom,
     handleSubmit,
     formatTime,
+    deleteAllChats,
   };
 }

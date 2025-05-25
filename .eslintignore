@@ -1,0 +1,8 @@
+**/generated/**/*
+**/prisma/**/*
+**/*.d.ts
+**/node_modules/**/*
+**/runtime/**/*
+**/client/**/*
+**/dist/**/*
+**/build/**/* 
