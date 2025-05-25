@@ -50,7 +50,7 @@ export async function GET() {
       }
 
       // Decrypt messages before sending to client
-      const decryptedMessages = chat.messages.map((message) => {
+      const decryptedMessages = chat.messages.map((message: MessageWithIv) => {
         const msgWithIv = message as MessageWithIv;
         try {
           // For legacy messages, return content as is
