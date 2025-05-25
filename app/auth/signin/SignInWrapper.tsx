@@ -15,7 +15,9 @@ export default function SignInWrapper() {
   useEffect(() => {
     const fetchProviders = async () => {
       const res = await getProviders();
-      setProviders(res);
+      if (res) {
+        setProviders(res as any); // Type assertion to fix type mismatch
+      }
     };
     fetchProviders();
   }, []);

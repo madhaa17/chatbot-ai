@@ -17,11 +17,11 @@ interface Providers {
   [key: string]: Provider;
 }
 
-interface Props {
+interface SignInComponentProps {
   providers: Providers | null;
 }
 
-export default function SignInComponent() {
+export default function SignInComponent({ providers }: SignInComponentProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
