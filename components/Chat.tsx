@@ -3,7 +3,9 @@
 import { Send, ChevronDown, Bot, Loader2, Trash2 } from "lucide-react";
 import { useChat } from "../hooks/useChat";
 import { MessageContent } from "./MessageContent";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { signOut, useSession } from "next-auth/react";
+import Image from "next/image";
 
 export default function Chat() {
   const {
@@ -21,6 +23,26 @@ export default function Chat() {
   } = useChat();
 
   const [isDeleting, setIsDeleting] = useState(false);
+  const { data: session } = useSession();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const avatarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        avatarRef.current &&
+        !avatarRef.current.contains(event.target as Node)
+      ) {
+        setDropdownOpen(false);
+      }
+    }
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownOpen]);
 
   const handleDeleteAll = async () => {
     if (
@@ -62,17 +84,41 @@ export default function Chat() {
             )}
           </div>
         </div>
-        <button
-          onClick={handleDeleteAll}
-          disabled={isDeleting || messages.length === 0}
-          className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Delete all chats">
-          {isDeleting ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <Trash2 className="h-5 w-5" />
+        {/* Avatar User with Dropdown */}
+        <div className="relative" ref={avatarRef}>
+          {session?.user?.image && (
+            <Image
+              width={40}
+              height={40}
+              src={session.user.image}
+              alt={session.user.name!}
+              className="h-10 w-10 rounded-full border-2 border-blue-500 object-cover cursor-pointer"
+              title={session.user.name!}
+              onClick={() => setDropdownOpen((v) => !v)}
+            />
           )}
-        </button>
+          {dropdownOpen && (
+            <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <button
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+                onClick={() => {
+                  setDropdownOpen(false);
+                  handleDeleteAll();
+                }}
+                disabled={isDeleting || messages.length === 0}>
+                Clear Chat
+              </button>
+              <button
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-500"
+                onClick={() => {
+                  setDropdownOpen(false);
+                  signOut();
+                }}>
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Messages */}

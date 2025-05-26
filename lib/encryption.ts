@@ -1,6 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 
-// Encryption key should be 32 bytes (256 bits) for AES-256
 const ENCRYPTION_KEY =
   process.env.ENCRYPTION_KEY || randomBytes(32).toString("hex");
 if (!process.env.ENCRYPTION_KEY) {
@@ -13,7 +12,7 @@ export function encrypt(text: string): { encryptedData: string; iv: string } {
   const iv = randomBytes(16);
   const cipher = createCipheriv(
     "aes-256-gcm",
-    Buffer.from(ENCRYPTION_KEY, "hex"),
+    Buffer.from(ENCRYPTION_KEY, "base64"),
     iv
   );
 
