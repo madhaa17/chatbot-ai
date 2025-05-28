@@ -21,7 +21,6 @@ export function encrypt(text: string): { encryptedData: string; iv: string } {
 
   const authTag = cipher.getAuthTag();
 
-  // Combine the encrypted data and auth tag
   const encryptedData = encrypted + authTag.toString("hex");
 
   return {
@@ -32,13 +31,12 @@ export function encrypt(text: string): { encryptedData: string; iv: string } {
 
 export function decrypt(encryptedData: string, iv: string): string {
   try {
-    // Split the auth tag from the encrypted data
     const authTag = Buffer.from(encryptedData.slice(-32), "hex");
     const encrypted = encryptedData.slice(0, -32);
 
     const decipher = createDecipheriv(
       "aes-256-gcm",
-      Buffer.from(ENCRYPTION_KEY, "hex"),
+      Buffer.from(ENCRYPTION_KEY, "base64"),
       Buffer.from(iv, "hex")
     );
 

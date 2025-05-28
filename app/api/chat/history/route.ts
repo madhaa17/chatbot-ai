@@ -25,7 +25,6 @@ export async function GET() {
     }
 
     try {
-      // Find the user's most recent chat with messages
       const chat = await prisma.chat.findFirst({
         where: {
           user: {
@@ -44,16 +43,13 @@ export async function GET() {
         },
       });
 
-      // If no chat exists, return empty array (not an error)
       if (!chat) {
         return NextResponse.json({ messages: [], chatId: null });
       }
 
-      // Decrypt messages before sending to client
       const decryptedMessages = chat.messages.map((message: MessageWithIv) => {
         const msgWithIv = message as MessageWithIv;
         try {
-          // For legacy messages, return content as is
           if (msgWithIv.iv === "legacy") {
             return {
               ...msgWithIv,
@@ -61,14 +57,13 @@ export async function GET() {
             };
           }
 
-          // For encrypted messages, decrypt them
           return {
             ...msgWithIv,
             content: decrypt(msgWithIv.content, msgWithIv.iv),
           };
         } catch (decryptError) {
           console.error("Error decrypting message:", decryptError);
-          // Return placeholder for failed decryption
+
           return {
             ...msgWithIv,
             content: "⚠️ Message could not be decrypted",

@@ -84,7 +84,6 @@ export default function Chat() {
             )}
           </div>
         </div>
-        {/* Avatar User with Dropdown */}
         <div className="relative" ref={avatarRef}>
           {session?.user?.image && (
             <Image
@@ -121,7 +120,6 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Messages */}
       <div
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto px-4 py-3 space-y-4 bg-blue-50">
@@ -178,7 +176,6 @@ export default function Chat() {
         </button>
       )}
 
-      {/* Input */}
       <div className="p-4 border-t border-gray-200">
         <form onSubmit={handleSubmit} className="flex items-center gap-2">
           <input
