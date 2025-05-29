@@ -1,13 +1,14 @@
 # AI Chatbot with Next.js
 
-<a href="https://chatbot-ai-dun-nine.vercel.app" target="_blank">Demo Chatbot</a>
-
 This is a modern chatbot application built with Next.js that supports both Google's Gemini models.
 
 ## Features
 
 - Support for both Gemini
+- Oauth Github
+- Encrypt message with crypto js
 - Real-time chat interface
+- Clear Chat
 - Responsive design
 - TypeScript support
 - Tailwind CSS styling
