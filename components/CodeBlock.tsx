@@ -7,7 +7,7 @@ import "highlight.js/styles/github.css";
 
 interface CodeBlockProps {
   code: string;
-  language: string;
+  language?: string;
 }
 
 export function CodeBlock({ code, language }: CodeBlockProps) {
@@ -41,7 +41,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
         </div>
       )}
       <div className="p-4 overflow-x-auto bg-white">
-        <pre className="text-sm">
+        <pre className="text-sm m-0">
           <code
             dangerouslySetInnerHTML={{ __html: highlightedCode }}
             className="hljs"

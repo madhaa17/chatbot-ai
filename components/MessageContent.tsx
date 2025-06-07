@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CodeBlock } from "./CodeBlock";
 import type { Components } from "react-markdown";
+import React from "react";
 
 interface MessageContentProps {
   content: string;
@@ -19,9 +20,6 @@ type CodeComponentProps = {
 
 const markdownComponents: Components = {
   code: ({ inline, className, children }: CodeComponentProps) => {
-    const match = /language-(\w+)/.exec(className || "");
-    const language = match ? match[1] : "";
-
     if (inline) {
       return (
         <code className="px-1 py-0.5 bg-gray-100 rounded text-sm">
@@ -29,14 +27,22 @@ const markdownComponents: Components = {
         </code>
       );
     }
-
-    return (
-      <div className="my-4">
-        <CodeBlock code={String(children).trim()} language={language} />
-      </div>
-    );
+    return null;
   },
-  pre: ({ children }) => <>{children}</>,
+  pre: ({ children, ...props }) => {
+    const codeElement = React.Children.toArray(
+      children
+    )[0] as React.ReactElement<{
+      children?: React.ReactNode;
+      className?: string;
+    }>;
+    const codeString = codeElement?.props?.children || "";
+    const className = codeElement?.props?.className || "";
+    const match = /language-(\w+)/.exec(className);
+    const language = match ? match[1] : "";
+
+    return <CodeBlock code={String(codeString).trim()} language={language} />;
+  },
   p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
   ul: ({ children }) => <ul className="mb-4 list-disc pl-6">{children}</ul>,
   ol: ({ children }) => <ol className="mb-4 list-decimal pl-6">{children}</ol>,
