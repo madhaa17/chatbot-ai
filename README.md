@@ -37,7 +37,6 @@ yarn install
 
 ```
 GOOGLE_API_KEY=your_google_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 4. Start the development server:
