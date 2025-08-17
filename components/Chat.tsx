@@ -3,6 +3,8 @@
 import { Send, ChevronDown, Bot, Loader2, Trash2 } from "lucide-react";
 import { useChat } from "../hooks/useChat";
 import { MessageContent } from "./MessageContent";
+import { MessageStatusIcon } from "./MessageStatusIcon";
+import { ChatDebugPanel } from "./ChatDebugPanel";
 import { useState, useRef, useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
@@ -20,6 +22,8 @@ export default function Chat() {
     handleSubmit,
     formatTime,
     deleteAllChats,
+    refreshHistory,
+    checkForUpdates,
   } = useChat();
 
   const [isDeleting, setIsDeleting] = useState(false);
@@ -158,9 +162,16 @@ export default function Chat() {
                   <p>{message.content}</p>
                 )}
               </div>
-              <span className="text-xs text-gray-400 mt-1">
-                {formatTime(message.timestamp)}
-              </span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-gray-400">
+                  {formatTime(message.timestamp)}
+                </span>
+                <MessageStatusIcon
+                  status={message.status}
+                  role={message.role}
+                  className="ml-2"
+                />
+              </div>
             </div>
           </div>
         ))}
@@ -197,6 +208,12 @@ export default function Chat() {
           </button>
         </form>
       </div>
+
+      <ChatDebugPanel
+        refreshHistory={refreshHistory}
+        checkForUpdates={checkForUpdates}
+        messages={messages}
+      />
     </div>
   );
 }

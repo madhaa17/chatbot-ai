@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { MessageStatusIcon } from "./MessageStatusIcon";
 
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp?: Date;
+  status?: "pending" | "delivered" | "failed";
+  tempId?: string;
 }
 
 interface VirtualizedChatListProps {
@@ -190,14 +193,21 @@ function MessageItem({ message, formatTime, index }: MessageItemProps) {
             <div className="whitespace-pre-wrap break-words">
               {message.content}
             </div>
-            {message.timestamp && (
-              <div
-                className={`text-xs mt-1 ${
-                  message.role === "user" ? "text-blue-100" : "text-gray-500"
-                }`}>
-                {formatTime(message.timestamp)}
-              </div>
-            )}
+            <div className="flex items-center justify-between mt-1">
+              {message.timestamp && (
+                <div
+                  className={`text-xs ${
+                    message.role === "user" ? "text-blue-100" : "text-gray-500"
+                  }`}>
+                  {formatTime(message.timestamp)}
+                </div>
+              )}
+              <MessageStatusIcon
+                status={message.status}
+                role={message.role}
+                className="ml-2"
+              />
+            </div>
           </>
         ) : (
           <div className="animate-pulse">

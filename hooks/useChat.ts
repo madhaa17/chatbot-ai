@@ -5,6 +5,8 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp?: Date;
+  status?: "pending" | "delivered" | "failed";
+  tempId?: string; // For optimistic updates
 }
 
 interface CacheData {
@@ -132,6 +134,28 @@ export function useChat() {
     });
   }, []);
 
+  // Update message status
+  const updateMessageStatus = useCallback(
+    (messageId: string, status: "pending" | "delivered" | "failed") => {
+      setMessages((prev) => {
+        const newMessages = prev.map((msg) =>
+          msg.id === messageId || msg.tempId === messageId
+            ? { ...msg, status }
+            : msg
+        );
+
+        // Update cache
+        if (cacheRef.current) {
+          cacheRef.current.messages = newMessages;
+          cacheRef.current.lastUpdated = Date.now();
+        }
+
+        return newMessages;
+      });
+    },
+    []
+  );
+
   // Auto-scroll to the bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -160,14 +184,17 @@ export function useChat() {
     e.preventDefault();
     if (!input.trim()) return;
 
+    const tempId = crypto.randomUUID();
     const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: tempId,
+      tempId,
       role: "user",
       content: input,
       timestamp: new Date(),
+      status: "pending",
     };
 
-    // Optimistic update - add message immediately
+    // Optimistic update - add message immediately with pending status
     addMessageOptimistically(userMessage);
     setInput("");
     setIsLoading(true);
@@ -183,14 +210,17 @@ export function useChat() {
       });
 
       if (!response.ok) {
-        // Rollback optimistic update on error
-        setMessages((prev) => prev.filter((msg) => msg.id !== userMessage.id));
+        // Mark message as failed instead of removing
+        updateMessageStatus(tempId, "failed");
 
         const errorData = await response
           .json()
           .catch(() => ({ error: "Unknown error occurred" }));
         throw new Error(errorData.error || `Server error (${response.status})`);
       }
+
+      // Mark user message as delivered once we get response
+      updateMessageStatus(tempId, "delivered");
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -221,6 +251,7 @@ export function useChat() {
                       id: "streaming",
                       role: "assistant" as const,
                       content: streamedContent,
+                      status: "pending" as const,
                     },
                   ];
 
@@ -252,6 +283,7 @@ export function useChat() {
         role: "assistant",
         content: streamedContent,
         timestamp: new Date(),
+        status: "delivered",
       };
 
       setMessages((prev) => {
@@ -271,12 +303,13 @@ export function useChat() {
     } catch (error) {
       console.error("Streaming error:", error);
 
-      // Add error message without optimistic update rollback
+      // Add error message
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
         content: "Sorry, I encountered an error. Please try again.",
         timestamp: new Date(),
+        status: "failed",
       };
 
       addMessageOptimistically(errorMessage);
@@ -316,7 +349,7 @@ export function useChat() {
 
   // Check for new messages (polling alternative)
   const checkForUpdates = useCallback(async () => {
-    if (!cacheRef.current?.etag) return;
+    if (!cacheRef.current?.etag) return false;
 
     try {
       const response = await fetch("/api/chat/history", {
