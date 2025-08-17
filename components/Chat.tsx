@@ -159,18 +159,20 @@ export default function Chat() {
                     isLoading={message.id === "streaming" && isLoading}
                   />
                 ) : (
-                  <p>{message.content}</p>
+                  <div className="flex items-end justify-between gap-2">
+                    <p className="flex-1">{message.content}</p>
+                    <MessageStatusIcon
+                      status={message.status}
+                      role={message.role}
+                      className="flex-shrink-0 ml-2 self-end"
+                    />
+                  </div>
                 )}
               </div>
               <div className="flex items-center justify-between mt-1">
                 <span className="text-xs text-gray-400">
                   {formatTime(message.timestamp)}
                 </span>
-                <MessageStatusIcon
-                  status={message.status}
-                  role={message.role}
-                  className="ml-2"
-                />
               </div>
             </div>
           </div>

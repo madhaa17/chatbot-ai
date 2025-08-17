@@ -92,6 +92,7 @@ export function useChat() {
           role: msg.role,
           content: msg.content,
           timestamp: new Date(msg.createdAt),
+          status: msg.role === "user" ? ("delivered" as const) : undefined, // Add delivered status for user messages
         }));
 
         // Update cache

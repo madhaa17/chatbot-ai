@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { XCircle, Clock9, CheckCheck } from "lucide-react";
 
 interface MessageStatusIconProps {
   status?: "pending" | "delivered" | "failed";
@@ -22,50 +23,20 @@ export function MessageStatusIcon({
     switch (status) {
       case "pending":
         return {
-          icon: (
-            <svg
-              className="w-3 h-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12,6 12,12 16,14" />
-            </svg>
-          ),
-          color: "text-blue-200",
+          icon: <Clock9 className="w-4 h-4" />,
+          color: "text-blue-100", // Light color for blue background
           tooltip: "Sending...",
         };
       case "delivered":
         return {
-          icon: (
-            <svg
-              className="w-3 h-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth="2">
-              <path d="M20 6L9 17l-5-5" />
-              <path d="M16 6L7 17l-1-1" />
-            </svg>
-          ),
-          color: "text-blue-200",
+          icon: <CheckCheck className="w-4 h-4" />,
+          color: "text-blue-100", // Light color for blue background
           tooltip: "Delivered",
         };
       case "failed":
         return {
-          icon: (
-            <svg
-              className="w-3 h-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="15" y1="9" x2="9" y2="15" />
-              <line x1="9" y1="9" x2="15" y2="15" />
-            </svg>
-          ),
-          color: "text-red-300",
+          icon: <XCircle className="w-4 h-4" />,
+          color: "text-red-200", // Light red for visibility
           tooltip: "Failed to send",
         };
       default:
