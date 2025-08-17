@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { authOptions } from "@/lib/authOptions";
 
-// Initialize the Google GenAI client
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 
 export async function POST(req: Request) {
@@ -26,7 +25,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get or create chat
     let chat = chatId
       ? await prisma.chat.findUnique({
           where: { id: chatId },
@@ -47,7 +45,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Encrypt and save the user message
     const { encryptedData: encryptedContent, iv: userIv } = encrypt(
       lastMessage.content
     );
@@ -60,20 +57,16 @@ export async function POST(req: Request) {
       },
     });
 
-    // Get the Gemini model
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    // Generate content stream
     const result = await model.generateContentStream({
       contents: [{ role: "user", parts: [{ text: lastMessage.content }] }],
     });
 
-    // Create a TransformStream to handle the streaming response
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
     const encoder = new TextEncoder();
 
-    // Process the stream
     (async () => {
       try {
         let assistantMessage = "";
@@ -94,7 +87,6 @@ export async function POST(req: Request) {
           }
         }
 
-        // Encrypt and save the complete assistant message
         const { encryptedData: encryptedAssistantContent, iv: assistantIv } =
           encrypt(assistantMessage);
         await prisma.message.create({
