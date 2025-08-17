@@ -1,10 +1,17 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp?: Date;
+}
+
+interface CacheData {
+  messages: ChatMessage[];
+  chatId: string | null;
+  lastUpdated: number;
+  etag?: string;
 }
 
 export function useChat() {
@@ -16,55 +23,114 @@ export function useChat() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
-  // Load chat history on mount
+  // Cache management
+  const cacheRef = useRef<CacheData | null>(null);
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+
+  // Load chat history on mount with cache check
   useEffect(() => {
     loadChatHistory();
   }, []);
 
-  // Load chat history from the database
-  const loadChatHistory = async () => {
-    try {
-      const response = await fetch("/api/chat/history");
+  // Optimized cache-aware history loading
+  const loadChatHistory = useCallback(
+    async (forceRefresh = false) => {
+      try {
+        const now = Date.now();
 
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ error: "Unknown error occurred" }));
-        throw new Error(
-          errorData.error || `Failed to load chat history (${response.status})`
-        );
-      }
+        // Check if we have valid cache and no force refresh
+        if (
+          !forceRefresh &&
+          cacheRef.current &&
+          now - lastFetchTime < CACHE_DURATION
+        ) {
+          setMessages(cacheRef.current.messages);
+          setCurrentChatId(cacheRef.current.chatId);
+          return;
+        }
 
-      const data = await response.json();
+        // Prepare headers for conditional requests
+        const headers: HeadersInit = {
+          "Cache-Control": "no-cache",
+        };
 
-      // Handle empty or invalid response data
-      if (!data) {
-        throw new Error("No data received from server");
-      }
+        // Add ETag for conditional requests if we have one
+        if (cacheRef.current?.etag) {
+          headers["If-None-Match"] = cacheRef.current.etag;
+        }
 
-      // Initialize messages array even if empty
-      const messages = data.messages || [];
-      setMessages(
-        messages.map((msg: any) => ({
+        const response = await fetch("/api/chat/history", { headers });
+
+        // Handle 304 Not Modified - use cached data
+        if (response.status === 304 && cacheRef.current) {
+          setLastFetchTime(now);
+          return;
+        }
+
+        if (!response.ok) {
+          const errorData = await response
+            .json()
+            .catch(() => ({ error: "Unknown error occurred" }));
+          throw new Error(
+            errorData.error ||
+              `Failed to load chat history (${response.status})`
+          );
+        }
+
+        const data = await response.json();
+
+        if (!data) {
+          throw new Error("No data received from server");
+        }
+
+        const messages = data.messages || [];
+        const processedMessages = messages.map((msg: any) => ({
           id: msg.id,
           role: msg.role,
           content: msg.content,
           timestamp: new Date(msg.createdAt),
-        }))
-      );
+        }));
 
-      // Set chat ID if available
-      if (data.chatId) {
-        setCurrentChatId(data.chatId);
+        // Update cache
+        const etag = response.headers.get("etag");
+        cacheRef.current = {
+          messages: processedMessages,
+          chatId: data.chatId,
+          lastUpdated: now,
+          etag: etag || undefined,
+        };
+
+        setMessages(processedMessages);
+        setLastFetchTime(now);
+
+        if (data.chatId) {
+          setCurrentChatId(data.chatId);
+        }
+      } catch (error) {
+        console.error("Error loading chat history:", error);
+        alert(
+          "Failed to load chat history. Please refresh the page to try again."
+        );
       }
-    } catch (error) {
-      console.error("Error loading chat history:", error);
-      // Show user-friendly error message
-      alert(
-        "Failed to load chat history. Please refresh the page to try again."
-      );
-    }
-  };
+    },
+    [lastFetchTime]
+  );
+
+  // Optimistic update for new messages
+  const addMessageOptimistically = useCallback((message: ChatMessage) => {
+    setMessages((prev) => {
+      const newMessages = [...prev, message];
+
+      // Update cache immediately
+      if (cacheRef.current) {
+        cacheRef.current.messages = newMessages;
+        cacheRef.current.lastUpdated = Date.now();
+      }
+
+      return newMessages;
+    });
+  }, []);
 
   // Auto-scroll to the bottom when messages change
   useEffect(() => {
@@ -101,7 +167,8 @@ export function useChat() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    // Optimistic update - add message immediately
+    addMessageOptimistically(userMessage);
     setInput("");
     setIsLoading(true);
 
@@ -116,6 +183,9 @@ export function useChat() {
       });
 
       if (!response.ok) {
+        // Rollback optimistic update on error
+        setMessages((prev) => prev.filter((msg) => msg.id !== userMessage.id));
+
         const errorData = await response
           .json()
           .catch(() => ({ error: "Unknown error occurred" }));
@@ -145,18 +215,29 @@ export function useChat() {
                 streamedContent += data.content;
                 setMessages((prev) => {
                   const others = prev.filter((msg) => msg.id !== "streaming");
-                  return [
+                  const newMessages = [
                     ...others,
                     {
                       id: "streaming",
-                      role: "assistant",
+                      role: "assistant" as const,
                       content: streamedContent,
                     },
                   ];
+
+                  // Update cache with streaming data
+                  if (cacheRef.current) {
+                    cacheRef.current.messages = newMessages;
+                    cacheRef.current.lastUpdated = Date.now();
+                  }
+
+                  return newMessages;
                 });
               }
               if (data.chatId && !currentChatId) {
                 setCurrentChatId(data.chatId);
+                if (cacheRef.current) {
+                  cacheRef.current.chatId = data.chatId;
+                }
               }
             } catch (e) {
               console.error("Error parsing streamed data:", e);
@@ -166,29 +247,39 @@ export function useChat() {
       }
 
       // Replace the streaming message with a permanent one
+      const finalMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: streamedContent,
+        timestamp: new Date(),
+      };
+
       setMessages((prev) => {
         const permanentMessages = prev.filter((msg) => msg.id !== "streaming");
-        return [
-          ...permanentMessages,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: streamedContent,
-            timestamp: new Date(),
-          },
-        ];
+        const newMessages = [...permanentMessages, finalMessage];
+
+        // Update cache with final message
+        if (cacheRef.current) {
+          cacheRef.current.messages = newMessages;
+          cacheRef.current.lastUpdated = Date.now();
+          // Invalidate ETag since we have new data
+          cacheRef.current.etag = undefined;
+        }
+
+        return newMessages;
       });
     } catch (error) {
       console.error("Streaming error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: "Sorry, I encountered an error. Please try again.",
-          timestamp: new Date(),
-        },
-      ]);
+
+      // Add error message without optimistic update rollback
+      const errorMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "Sorry, I encountered an error. Please try again.",
+        timestamp: new Date(),
+      };
+
+      addMessageOptimistically(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -207,14 +298,48 @@ export function useChat() {
         throw new Error(errorData.error || `Server error (${response.status})`);
       }
 
-      // Clear local messages and chat ID
+      // Clear local messages, chat ID, and cache
       setMessages([]);
       setCurrentChatId(null);
+      cacheRef.current = null;
+      setLastFetchTime(0);
     } catch (error) {
       console.error("Error deleting chats:", error);
       throw error;
     }
   };
+
+  // Refresh history manually
+  const refreshHistory = useCallback(() => {
+    return loadChatHistory(true);
+  }, [loadChatHistory]);
+
+  // Check for new messages (polling alternative)
+  const checkForUpdates = useCallback(async () => {
+    if (!cacheRef.current?.etag) return;
+
+    try {
+      const response = await fetch("/api/chat/history", {
+        headers: {
+          "If-None-Match": cacheRef.current.etag,
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      // If 304, no new messages
+      if (response.status === 304) return false;
+
+      // If 200, we have new messages
+      if (response.ok) {
+        await loadChatHistory(true);
+        return true;
+      }
+    } catch (error) {
+      console.error("Error checking for updates:", error);
+    }
+
+    return false;
+  }, [loadChatHistory]);
 
   // Format time for display
   const formatTime = (date?: Date) => {
@@ -234,5 +359,7 @@ export function useChat() {
     handleSubmit,
     formatTime,
     deleteAllChats,
+    refreshHistory,
+    checkForUpdates,
   };
 }

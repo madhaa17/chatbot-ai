@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
 import { authOptions } from "@/lib/authOptions";
+import crypto from "crypto";
 
 interface MessageWithIv {
   id: string;
@@ -13,7 +14,7 @@ interface MessageWithIv {
   iv: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -25,6 +26,54 @@ export async function GET() {
     }
 
     try {
+      // First, get chat count and last message timestamp for ETag generation
+      const chatSummary = await prisma.chat.findFirst({
+        where: {
+          user: {
+            email: session.user.email,
+          },
+        },
+        select: {
+          id: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              messages: true,
+            },
+          },
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+      });
+
+      if (!chatSummary) {
+        const response = NextResponse.json({ messages: [], chatId: null });
+        // Set ETag for empty state
+        response.headers.set("ETag", '"empty"');
+        response.headers.set("Cache-Control", "private, max-age=300"); // 5 minutes
+        return response;
+      }
+
+      // Generate ETag based on chat ID, update time, and message count
+      const etagData = `${chatSummary.id}-${chatSummary.updatedAt.getTime()}-${
+        chatSummary._count.messages
+      }`;
+      const etag = `"${crypto
+        .createHash("md5")
+        .update(etagData)
+        .digest("hex")}"`;
+
+      // Check If-None-Match header for conditional requests
+      const ifNoneMatch = request.headers.get("if-none-match");
+      if (ifNoneMatch && ifNoneMatch === etag) {
+        const response = new NextResponse(null, { status: 304 });
+        response.headers.set("ETag", etag);
+        response.headers.set("Cache-Control", "private, max-age=300");
+        return response;
+      }
+
+      // If ETag doesn't match, fetch full data
       const chat = await prisma.chat.findFirst({
         where: {
           user: {
@@ -44,7 +93,10 @@ export async function GET() {
       });
 
       if (!chat) {
-        return NextResponse.json({ messages: [], chatId: null });
+        const response = NextResponse.json({ messages: [], chatId: null });
+        response.headers.set("ETag", '"empty"');
+        response.headers.set("Cache-Control", "private, max-age=300");
+        return response;
       }
 
       const decryptedMessages = chat.messages.map((message: MessageWithIv) => {
@@ -71,10 +123,17 @@ export async function GET() {
         }
       });
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         chatId: chat.id,
         messages: decryptedMessages,
       });
+
+      // Set caching headers
+      response.headers.set("ETag", etag);
+      response.headers.set("Cache-Control", "private, max-age=300"); // 5 minutes
+      response.headers.set("Vary", "Authorization"); // Vary by auth since it's user-specific
+
+      return response;
     } catch (dbError) {
       console.error("Database error:", dbError);
       return NextResponse.json(
