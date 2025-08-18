@@ -153,85 +153,135 @@ const updateMessageStatus = useCallback(
 ```typescript
 // hooks/useChat.ts
 const cacheRef = useRef<CacheData | null>(null);
-const [lastFetchTime, setLastFetchTime] = useState<number>(0);
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-const loadChatHistory = useCallback(
+// Load messages with cache support
+const loadMessages = useCallback(
   async (forceRefresh = false) => {
-    // Cache logic implementation
+    const now = Date.now();
+
+    // Check cache first
+    if (
+      !forceRefresh &&
+      cacheRef.current &&
+      now - lastFetchTime < CACHE_DURATION
+    ) {
+      setMessages(cacheRef.current.messages);
+      setChatId(cacheRef.current.chatId);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const headers: Record<string, string> = {};
+
+      // Add ETag header for conditional requests
+      if (cacheRef.current?.etag) {
+        headers["If-None-Match"] = cacheRef.current.etag;
+      }
+
+      const response = await fetch("/api/chat/history", { headers });
+
+      // Handle 304 Not Modified
+      if (response.status === 304) {
+        if (cacheRef.current) {
+          setMessages(cacheRef.current.messages);
+          setChatId(cacheRef.current.chatId);
+        }
+        return;
+      }
+
+      if (!response.ok) throw new Error("Failed to load messages");
+
+      const data = await response.json();
+
+      // Update cache
+      const etag = response.headers.get("etag") || undefined;
+      cacheRef.current = {
+        messages: data.messages,
+        chatId: data.chatId,
+        lastUpdated: now,
+        etag,
+      };
+
+      setMessages(data.messages);
+      setChatId(data.chatId);
+      setLastFetchTime(now);
+    } catch (error) {
+      console.error("Failed to load messages:", error);
+    } finally {
+      setIsLoading(false);
+    }
   },
   [lastFetchTime]
 );
 ```
 
-### 3. **API Endpoint Enhancement**
+### 3. **API Endpoint with ETag Support**
 
 ```typescript
 // app/api/chat/history/route.ts
-const etagData = `${chatSummary.id}-${chatSummary.updatedAt.getTime()}-${
-  chatSummary._count.messages
-}`;
-const etag = `"${crypto.createHash("md5").update(etagData).digest("hex")}"`;
+export async function GET(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-// Check If-None-Match header
-const ifNoneMatch = request.headers.get("if-none-match");
-if (ifNoneMatch && ifNoneMatch === etag) {
-  return new NextResponse(null, { status: 304 });
+    // Generate ETag based on user and last update
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        chats: {
+          include: { messages: true },
+          orderBy: { updatedAt: "desc" },
+          take: 1,
+        },
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const lastChat = user.chats[0];
+    const etag = lastChat
+      ? `"${lastChat.id}-${lastChat.updatedAt.getTime()}-${
+          lastChat.messages.length
+        }"`
+      : `"empty-${Date.now()}"`;
+
+    // Check If-None-Match header
+    const ifNoneMatch = request.headers.get("if-none-match");
+    if (ifNoneMatch === etag) {
+      return new NextResponse(null, { status: 304, headers: { ETag: etag } });
+    }
+
+    // Fetch and decrypt messages
+    const messages = lastChat?.messages || [];
+    const decryptedMessages = messages.map((msg) => ({
+      ...msg,
+      content: decrypt(msg.content),
+    }));
+
+    const response = NextResponse.json({
+      messages: decryptedMessages,
+      chatId: lastChat?.id || null,
+    });
+
+    // Set cache headers
+    response.headers.set("ETag", etag);
+    response.headers.set("Cache-Control", "private, max-age=300");
+    response.headers.set("Vary", "Authorization");
+
+    return response;
+  } catch (error) {
+    console.error("Error loading chat history:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
-```
-
-### 4. **Debug Panel**
-
-```typescript
-// components/ChatDebugPanel.tsx
-- Cache hit/miss statistics
-- Manual refresh controls
-- Update checking
-- Performance monitoring
-```
-
-## 📈 Monitoring & Debug
-
-### Debug Panel Features:
-
-- **Cache Statistics**: Hit/miss ratio tracking
-- **Manual Controls**: Force refresh, check updates
-- **Real-time Metrics**: Message count, last fetch time
-- **Cache Status**: ETag support indicator
-
-### Performance Monitoring:
-
-```typescript
-// Track cache effectiveness
-setCacheStats((prev) => ({
-  ...prev,
-  [hasUpdates ? "cacheMisses" : "cacheHits"]:
-    prev[hasUpdates ? "cacheMisses" : "cacheHits"] + 1,
-}));
-```
-
-## ⚙️ Configuration
-
-### Cache Duration:
-
-```typescript
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes (adjustable)
-```
-
-### Message Status Settings:
-
-```typescript
-// Status transition timing
-- Pending: Immediate on send
-- Delivered: On server confirmation
-- Failed: On error response
-```
-
-### Virtualization Settings:
-
-```typescript
-const ITEM_HEIGHT = 80; // Message height estimation
-const BUFFER_SIZE = 5; // Extra items outside viewport
 ```
 
 ### HTTP Cache Headers:
@@ -278,22 +328,17 @@ response.headers.set("Vary", "Authorization");
 - Typing indicators
 - Message reactions
 
-### 2. **Service Worker Cache**
-
-- Offline support untuk chat history
-- Background sync untuk pending messages
-
-### 3. **Database Query Optimization**
+### 2. **Database Query Optimization**
 
 - Pagination untuk large chat histories
 - Indexing strategies untuk better performance
 
-### 4. **Real-time Updates**
+### 3. **Real-time Updates**
 
 - WebSocket integration untuk live updates
 - Push notifications untuk new messages
 
-### 5. **Advanced Caching**
+### 4. **Advanced Caching**
 
 - LRU cache implementation
 - Persistent cache dengan IndexedDB

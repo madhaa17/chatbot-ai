@@ -25,17 +25,14 @@ export function useChat() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
-  // Cache management
   const cacheRef = useRef<CacheData | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+  const CACHE_DURATION = 5 * 60 * 1000;
 
-  // Load chat history on mount with cache check
   useEffect(() => {
     loadChatHistory();
   }, []);
 
-  // Optimized cache-aware history loading
   const loadChatHistory = useCallback(
     async (forceRefresh = false) => {
       try {
@@ -52,19 +49,16 @@ export function useChat() {
           return;
         }
 
-        // Prepare headers for conditional requests
         const headers: HeadersInit = {
           "Cache-Control": "no-cache",
         };
 
-        // Add ETag for conditional requests if we have one
         if (cacheRef.current?.etag) {
           headers["If-None-Match"] = cacheRef.current.etag;
         }
 
         const response = await fetch("/api/chat/history", { headers });
 
-        // Handle 304 Not Modified - use cached data
         if (response.status === 304 && cacheRef.current) {
           setLastFetchTime(now);
           return;
@@ -135,7 +129,6 @@ export function useChat() {
     });
   }, []);
 
-  // Update message status
   const updateMessageStatus = useCallback(
     (messageId: string, status: "pending" | "delivered" | "failed") => {
       setMessages((prev) => {
@@ -157,12 +150,10 @@ export function useChat() {
     []
   );
 
-  // Auto-scroll to the bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Check if we should show the scroll to bottom button
   useEffect(() => {
     const container = chatContainerRef.current;
     if (!container) return;
@@ -195,7 +186,6 @@ export function useChat() {
       status: "pending",
     };
 
-    // Optimistic update - add message immediately with pending status
     addMessageOptimistically(userMessage);
     setInput("");
     setIsLoading(true);
@@ -211,7 +201,6 @@ export function useChat() {
       });
 
       if (!response.ok) {
-        // Mark message as failed instead of removing
         updateMessageStatus(tempId, "failed");
 
         const errorData = await response
@@ -220,7 +209,6 @@ export function useChat() {
         throw new Error(errorData.error || `Server error (${response.status})`);
       }
 
-      // Mark user message as delivered once we get response
       updateMessageStatus(tempId, "delivered");
 
       const reader = response.body?.getReader();
@@ -256,7 +244,6 @@ export function useChat() {
                     },
                   ];
 
-                  // Update cache with streaming data
                   if (cacheRef.current) {
                     cacheRef.current.messages = newMessages;
                     cacheRef.current.lastUpdated = Date.now();
@@ -278,7 +265,6 @@ export function useChat() {
         }
       }
 
-      // Replace the streaming message with a permanent one
       const finalMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -291,11 +277,10 @@ export function useChat() {
         const permanentMessages = prev.filter((msg) => msg.id !== "streaming");
         const newMessages = [...permanentMessages, finalMessage];
 
-        // Update cache with final message
         if (cacheRef.current) {
           cacheRef.current.messages = newMessages;
           cacheRef.current.lastUpdated = Date.now();
-          // Invalidate ETag since we have new data
+
           cacheRef.current.etag = undefined;
         }
 
@@ -343,39 +328,6 @@ export function useChat() {
     }
   };
 
-  // Refresh history manually
-  const refreshHistory = useCallback(() => {
-    return loadChatHistory(true);
-  }, [loadChatHistory]);
-
-  // Check for new messages (polling alternative)
-  const checkForUpdates = useCallback(async () => {
-    if (!cacheRef.current?.etag) return false;
-
-    try {
-      const response = await fetch("/api/chat/history", {
-        headers: {
-          "If-None-Match": cacheRef.current.etag,
-          "Cache-Control": "no-cache",
-        },
-      });
-
-      // If 304, no new messages
-      if (response.status === 304) return false;
-
-      // If 200, we have new messages
-      if (response.ok) {
-        await loadChatHistory(true);
-        return true;
-      }
-    } catch (error) {
-      console.error("Error checking for updates:", error);
-    }
-
-    return false;
-  }, [loadChatHistory]);
-
-  // Format time for display
   const formatTime = (date?: Date) => {
     if (!date) return "";
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -393,7 +345,5 @@ export function useChat() {
     handleSubmit,
     formatTime,
     deleteAllChats,
-    refreshHistory,
-    checkForUpdates,
   };
 }

@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 
 const ENCRYPTION_KEY =
-  process.env.ENCRYPTION_KEY || randomBytes(32).toString("hex");
+  process.env.ENCRYPTION_KEY || randomBytes(32).toString("base64");
 if (!process.env.ENCRYPTION_KEY) {
   console.warn(
     "ENCRYPTION_KEY not found in environment variables. Using random key (messages will not persist across restarts)"

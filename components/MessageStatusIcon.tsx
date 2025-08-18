@@ -24,19 +24,19 @@ export function MessageStatusIcon({
       case "pending":
         return {
           icon: <Clock9 className="w-4 h-4" />,
-          color: "text-blue-100", // Light color for blue background
+          color: "text-blue-700",
           tooltip: "Sending...",
         };
       case "delivered":
         return {
           icon: <CheckCheck className="w-4 h-4" />,
-          color: "text-blue-100", // Light color for blue background
+          color: "text-blue-700",
           tooltip: "Delivered",
         };
       case "failed":
         return {
           icon: <XCircle className="w-4 h-4" />,
-          color: "text-red-200", // Light red for visibility
+          color: "text-red-200",
           tooltip: "Failed to send",
         };
       default:

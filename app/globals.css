@@ -13,25 +13,62 @@
 body {
   background-color: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+  /* Performance optimizations */
+  contain: layout style paint;
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Performance optimizations for chat containers */
+.chat-container {
+  contain: layout;
+  will-change: scroll-position;
+  transform: translateZ(0); /* Create new layer */
+}
+
+.message-item {
+  contain: layout style;
+  will-change: auto;
+}
+
+/* Optimize animations */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .prose {
   max-width: 65ch;
-  color: #f3f4f6; /* text-gray-100 */
+  /* Remove fixed color to inherit from parent */
+  color: inherit;
+  /* Performance optimization */
+  contain: layout style;
 }
 
 .prose p {
   margin-top: 0.5em;
   margin-bottom: 0.5em;
+  color: inherit;
 }
 
 .prose strong {
-  color: #e5e7eb; /* text-gray-200 */
   font-weight: 600;
+  color: inherit;
+  opacity: 0.9;
 }
 
 .prose a {
-  color: #60a5fa; /* text-blue-400 */
+  color: #3b82f6; /* blue-500 - works on both light and dark backgrounds */
   text-decoration: underline;
   font-weight: 500;
 }
@@ -41,11 +78,13 @@ body {
   margin-top: 0.5em;
   margin-bottom: 0.5em;
   padding-left: 1.5em;
+  color: inherit;
 }
 
 .prose li {
   margin-top: 0.25em;
   margin-bottom: 0.25em;
+  color: inherit;
 }
 
 .prose pre,
@@ -55,7 +94,9 @@ body {
   padding: 0.125em 0.25em;
   font-size: 0.875em;
   font-family: ui-monospace, monospace;
-  color: #e5e7eb; /* text-gray-200 */
+  color: #e5e7eb; /* text-gray-200 - keep light for code blocks */
+  /* Performance optimization */
+  contain: layout style;
 }
 
 .prose pre {
@@ -63,6 +104,22 @@ body {
   overflow-x: auto;
   margin: 0.75em 0;
   /* border: 1px solid #374151; border-gray-700 */
+  /* Optimize scrolling */
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 transparent;
+}
+
+.prose pre::-webkit-scrollbar {
+  height: 6px;
+}
+
+.prose pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.prose pre::-webkit-scrollbar-thumb {
+  background-color: #4b5563;
+  border-radius: 3px;
 }
 
 .prose blockquote {
@@ -70,7 +127,9 @@ body {
   padding-left: 1em;
   font-style: italic;
   margin: 0.75em 0;
-  color: #9ca3af; /* text-gray-400 */
+  color: inherit;
+  opacity: 0.8;
+  border-left: 3px solid currentColor;
 }
 
 .prose h1,
@@ -81,7 +140,9 @@ body {
   line-height: 1.25;
   margin-top: 1em;
   margin-bottom: 0.5em;
-  color: #e5e7eb; /* text-gray-200 */
+  color: inherit;
+  /* Performance optimization */
+  contain: layout style;
 }
 
 .prose h1 {
@@ -98,4 +159,23 @@ body {
 
 .prose h4 {
   font-size: 1em;
+}
+
+/* Optimize transitions */
+.transition-colors {
+  transition-property: color, background-color, border-color;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
